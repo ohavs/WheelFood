@@ -4,6 +4,7 @@ import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, onAuthStateChanged, signInAnonymously, type Auth, type User } from "firebase/auth";
 import {
   initializeFirestore,
+  memoryLocalCache,
   persistentLocalCache,
   persistentMultipleTabManager,
   type Firestore,
@@ -23,8 +24,14 @@ export function getFirebase(): { app: FirebaseApp; db: Firestore; auth: Auth } |
     app = getApps()[0] ?? initializeApp(env);
     // Persistent cache gives us offline reads/writes and a queue that flushes
     // when the connection comes back — the PWA keeps working on the subway.
+    // It needs IndexedDB, which private-mode browsers and some in-app webviews
+    // withhold; there we fall back to an in-memory cache rather than letting
+    // initialization throw and drop the whole session to local-only storage.
+    const hasIndexedDb = typeof globalThis.indexedDB !== "undefined";
     db = initializeFirestore(app, {
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+      localCache: hasIndexedDb
+        ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        : memoryLocalCache(),
     });
     auth = getAuth(app);
   }

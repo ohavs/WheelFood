@@ -10,7 +10,7 @@ PWA שמחליטה בשבילך מה אוכלים: גלגל מנות עם סינ
 | Framework | Next.js 16 (App Router, React 19, TypeScript) |
 | Styling | Tailwind CSS v4 + design tokens ב-`src/app/globals.css` |
 | State | React Context (`src/lib/store.tsx`) |
-| Storage | Firestore (anonymous auth) עם נפילה חזרה ל-localStorage |
+| Storage | Firestore — מרחב משותף לכל המשתמשים, עם נפילה חזרה ל-localStorage |
 | PWA | `src/app/manifest.ts` + `public/sw.js` (offline-first app shell) |
 | Deps נוספות | `firebase` בלבד. הגלגל, הקונפטי, הצלילים והאייקונים נבנים מאפס |
 
@@ -81,24 +81,29 @@ public/
 **מבנה הנתונים ב-Firestore**
 
 ```
-users/{uid}                -> (ריק, מחזיק את תתי-האוספים)
-users/{uid}/profile/main   -> { filters, settings }
-users/{uid}/meals/{id}     -> Meal
-users/{uid}/history/{id}   -> SpinRecord
+spaces/shared/meals/{id}     -> Meal
+spaces/shared/history/{id}   -> SpinRecord
 ```
 
-כל מכשיר מתחבר ב-**anonymous auth**, וה-uid הוא הגבול היחיד בין משתמשים —
-`firestore.rules` מאפשר קריאה/כתיבה רק כשה-uid בטוקן שווה ל-uid בנתיב.
-המידע נקרא דרך `onSnapshot`, כך שכל שינוי מתעדכן בזמן אמת בכל הלשוניות
-והמכשירים, ו-`persistentLocalCache` נותן קריאה וכתיבה גם בלי רשת (הכתיבות
-מתנקזות כשהחיבור חוזר).
+האפליקציה עובדת על **מרחב משותף אחד**: כל מי שפותח אותה רואה ועורך את אותן
+מנות ואת אותה היסטוריה, בלי הרשמה ובלי התחברות. כל מכשיר מתחבר ב-anonymous
+auth ברקע — זה בלתי נראה למשתמש, ומשמש רק כדי ש-`firestore.rules` יוכל לדרוש
+טוקן תקין במקום לפתוח את מסד הנתונים לאינטרנט הפתוח.
 
-**מה צריך להיות מופעל בקונסולה**
+**מה כן נשאר אישי:** ערכת הנושא, הצלילים, הרטט, מספר המשבצות והסינון הפעיל —
+אלה נשמרים ב-localStorage של כל מכשיר. אין סיבה שהעדפת מצב כהה של אחד תשנה
+את המסך של השני.
 
-| | |
-|---|---|
-| Firestore Database | ✅ קיים |
-| Authentication → Anonymous | ⚠️ צריך הפעלה — בלעדיו האפליקציה עובדת מקומית בלבד |
+הקריאה דרך `onSnapshot`, כך שמנה שאחד מוסיף מופיעה אצל השני מיד, ו-
+`persistentLocalCache` נותן קריאה וכתיבה גם בלי רשת (הכתיבות מתנקזות כשהחיבור
+חוזר).
+
+**מיגרציה:** בפתיחה הראשונה אחרי המעבר, כל מכשיר מקפל את המנות שצבר קודם —
+גם מ-localStorage וגם מהמבנה הישן `users/{uid}` — לתוך המרחב המשותף, ומדלג על
+שמות שכבר קיימים שם כדי לא לשכפל את רשימת ההתחלה.
+
+**להפריד מרחבים** (למשל בית ועבודה): `NEXT_PUBLIC_WHEELFOOD_SPACE=<name>`.
+ברירת המחדל היא `shared`.
 
 **דיפלוי**
 
