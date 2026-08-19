@@ -1,0 +1,237 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Design tokens.
+   These are the only place raw colours live. When the Claude Design bundle
+   (_ds/.../styles.css) is dropped in, map its variables onto these names and
+   the whole app re-skins without touching a component.
+   --------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: light;
+
+  --wf-bg: #fff7f0;
+  --wf-bg-elevated: #ffffff;
+  --wf-surface: #ffffff;
+  --wf-surface-muted: #fdf1e7;
+  --wf-border: #f0ddcd;
+  --wf-border-strong: #e2c6b0;
+
+  --wf-text: #23140d;
+  --wf-text-muted: #8a6f5e;
+  --wf-text-inverse: #ffffff;
+
+  --wf-primary: #f04e23;
+  --wf-primary-hover: #d63f18;
+  --wf-primary-soft: #ffe6dd;
+  --wf-accent: #ffb020;
+  --wf-accent-soft: #fff1d4;
+  --wf-mint: #16a06a;
+  --wf-mint-soft: #dcf5ea;
+  --wf-danger: #d92d20;
+  --wf-danger-soft: #fdeceb;
+
+  --wf-radius-sm: 0.625rem;
+  --wf-radius: 1rem;
+  --wf-radius-lg: 1.5rem;
+  --wf-radius-xl: 2rem;
+
+  --wf-shadow-sm: 0 1px 2px rgb(35 20 13 / 0.06), 0 1px 3px rgb(35 20 13 / 0.04);
+  --wf-shadow: 0 4px 16px rgb(35 20 13 / 0.08);
+  --wf-shadow-lg: 0 18px 40px rgb(35 20 13 / 0.16);
+
+  --wf-nav-height: 4.5rem;
+
+  /* Wheel slice palette — evenly spaced warm hues. */
+  --wf-slice-1: #f04e23;
+  --wf-slice-2: #ff8a3d;
+  --wf-slice-3: #ffb020;
+  --wf-slice-4: #f6c945;
+  --wf-slice-5: #7cc47f;
+  --wf-slice-6: #16a06a;
+  --wf-slice-7: #3aa8c1;
+  --wf-slice-8: #6d6bd8;
+  --wf-slice-9: #b45bd0;
+  --wf-slice-10: #e34a8c;
+  --wf-slice-11: #ef5b5b;
+  --wf-slice-12: #d98324;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --wf-bg: #16100d;
+  --wf-bg-elevated: #201814;
+  --wf-surface: #241b16;
+  --wf-surface-muted: #2e231d;
+  --wf-border: #3a2c24;
+  --wf-border-strong: #4d3a2f;
+
+  --wf-text: #fbeee6;
+  --wf-text-muted: #b39d8e;
+  --wf-text-inverse: #1a120e;
+
+  --wf-primary: #ff6a3d;
+  --wf-primary-hover: #ff835c;
+  --wf-primary-soft: #3c1f14;
+  --wf-accent: #ffc043;
+  --wf-accent-soft: #3a2b12;
+  --wf-mint: #3ec48c;
+  --wf-mint-soft: #12301f;
+  --wf-danger: #ff6a5e;
+  --wf-danger-soft: #3b1714;
+
+  --wf-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --wf-shadow: 0 4px 18px rgb(0 0 0 / 0.45);
+  --wf-shadow-lg: 0 20px 44px rgb(0 0 0 / 0.55);
+}
+
+@theme inline {
+  --color-bg: var(--wf-bg);
+  --color-bg-elevated: var(--wf-bg-elevated);
+  --color-surface: var(--wf-surface);
+  --color-surface-muted: var(--wf-surface-muted);
+  --color-border-soft: var(--wf-border);
+  --color-border-strong: var(--wf-border-strong);
+  --color-ink: var(--wf-text);
+  --color-ink-muted: var(--wf-text-muted);
+  --color-ink-inverse: var(--wf-text-inverse);
+  --color-primary: var(--wf-primary);
+  --color-primary-hover: var(--wf-primary-hover);
+  --color-primary-soft: var(--wf-primary-soft);
+  --color-accent: var(--wf-accent);
+  --color-accent-soft: var(--wf-accent-soft);
+  --color-mint: var(--wf-mint);
+  --color-mint-soft: var(--wf-mint-soft);
+  --color-danger: var(--wf-danger);
+  --color-danger-soft: var(--wf-danger-soft);
+
+  --radius-sm: var(--wf-radius-sm);
+  --radius-md: var(--wf-radius);
+  --radius-lg: var(--wf-radius-lg);
+  --radius-xl: var(--wf-radius-xl);
+
+  --shadow-soft: var(--wf-shadow-sm);
+  --shadow-card: var(--wf-shadow);
+  --shadow-pop: var(--wf-shadow-lg);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+html {
+  /* Reserve the scrollbar track so locking body scroll for a sheet does not
+     shift the whole layout sideways. The gutter belongs to <html>, so it has
+     to carry the page background too. */
+  scrollbar-gutter: stable;
+  background: var(--wf-bg);
+}
+
+body {
+  background: var(--wf-bg);
+  color: var(--wf-text);
+  font-family:
+    var(--font-app),
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ambient warmth behind the app shell. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(
+      60rem 30rem at 50% -10rem,
+      color-mix(in srgb, var(--wf-accent) 22%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      40rem 24rem at 100% 100%,
+      color-mix(in srgb, var(--wf-primary) 12%, transparent),
+      transparent 70%
+    );
+}
+
+:focus-visible {
+  outline: 2px solid var(--wf-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Hide scrollbars on the horizontal chip rails without losing scroll. */
+.wf-scroll-x {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.wf-scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+.wf-safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+}
+
+@keyframes wf-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes wf-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes wf-confetti-fall {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, -10vh, 0) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--wf-drift, 0), 92vh, 0) rotate(720deg);
+  }
+}
+
+.wf-pop-in {
+  animation: wf-pop-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.wf-fade-in {
+  animation: wf-fade-in 200ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wf-pop-in,
+  .wf-fade-in {
+    animation: none;
+  }
+}
+
+html[data-reduce-motion="true"] * {
+  animation-duration: 1ms !important;
+  transition-duration: 1ms !important;
+}
