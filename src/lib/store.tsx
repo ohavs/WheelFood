@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getRepository } from "@/lib/repo";
+import { createLocalRepository, createRepository, type DataRepository } from "@/lib/repo";
 import { seedMeals } from "@/lib/seed";
 import {
   DEFAULT_FILTERS,
@@ -23,8 +23,13 @@ import {
   type SpinRecord,
 } from "@/lib/types";
 
+export type BackendStatus = "connecting" | "cloud" | "local" | "fallback";
+
 interface StoreValue extends AppData {
   ready: boolean;
+  /** Which backend actually served this session, for the settings screen. */
+  backend: BackendStatus;
+  backendError: string | null;
   createMeal: (draft: MealDraft) => Promise<Meal>;
   updateMeal: (id: string, patch: Partial<MealDraft>) => Promise<void>;
   deleteMeal: (id: string) => Promise<void>;
@@ -49,140 +54,176 @@ const EMPTY: AppData = {
 };
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const repo = useMemo(() => getRepository(), []);
   const [data, setData] = useState<AppData>(EMPTY);
   const [ready, setReady] = useState(false);
+  const [backend, setBackend] = useState<BackendStatus>("connecting");
+  const [backendError, setBackendError] = useState<string | null>(null);
+
+  const repoRef = useRef<DataRepository | null>(null);
   const mounted = useRef(true);
 
   useEffect(() => {
     mounted.current = true;
     let unsubscribe: (() => void) | undefined;
 
-    repo.load().then((loaded) => {
+    const start = async () => {
+      let repo = createRepository();
+      let loaded: AppData;
+
+      try {
+        loaded = await repo.load();
+        setBackend(repo.name === "firebase" ? "cloud" : "local");
+      } catch (error) {
+        // Anonymous auth disabled, offline first load, bad config — keep the
+        // app usable on this device rather than showing a dead screen.
+        repo = createLocalRepository();
+        loaded = await repo.load();
+        setBackend("fallback");
+        setBackendError(error instanceof Error ? error.message : String(error));
+      }
+
       if (!mounted.current) return;
+      repoRef.current = repo;
       setData(loaded);
       setReady(true);
+
       unsubscribe = repo.subscribe?.((next) => {
         if (mounted.current) setData(next);
       });
-    });
+    };
+
+    void start();
 
     return () => {
       mounted.current = false;
       unsubscribe?.();
     };
-  }, [repo]);
+  }, []);
 
+  /**
+   * Re-reads after a mutation, but only for backends without a live stream —
+   * a realtime repository delivers its own update through `subscribe`.
+   */
   const refresh = useCallback(async () => {
+    const repo = repoRef.current;
+    if (!repo || repo.realtime) return;
     const next = await repo.load();
     if (mounted.current) setData(next);
-  }, [repo]);
+  }, []);
+
+  const repo = () => {
+    const current = repoRef.current;
+    if (!current) throw new Error("Store is not ready yet");
+    return current;
+  };
 
   const createMeal = useCallback(
     async (draft: MealDraft) => {
-      const meal = await repo.createMeal(draft);
+      const meal = await repo().createMeal(draft);
       await refresh();
       return meal;
     },
-    [repo, refresh],
+    [refresh],
   );
 
   const updateMeal = useCallback(
     async (id: string, patch: Partial<MealDraft>) => {
-      await repo.updateMeal(id, patch);
+      await repo().updateMeal(id, patch);
       await refresh();
     },
-    [repo, refresh],
+    [refresh],
   );
 
   const deleteMeal = useCallback(
     async (id: string) => {
-      await repo.deleteMeal(id);
+      await repo().deleteMeal(id);
       await refresh();
     },
-    [repo, refresh],
+    [refresh],
   );
 
   const toggleFavorite = useCallback(
     async (id: string) => {
-      const meal = data.meals.find((m) => m.id === id);
+      const meal = data.meals.find((item) => item.id === id);
       if (!meal) return;
-      await repo.updateMeal(id, { favorite: !meal.favorite });
+      await repo().updateMeal(id, { favorite: !meal.favorite });
       await refresh();
     },
-    [data.meals, repo, refresh],
+    [data.meals, refresh],
   );
 
   const toggleEnabled = useCallback(
     async (id: string) => {
-      const meal = data.meals.find((m) => m.id === id);
+      const meal = data.meals.find((item) => item.id === id);
       if (!meal) return;
-      await repo.updateMeal(id, { enabled: !meal.enabled });
+      await repo().updateMeal(id, { enabled: !meal.enabled });
       await refresh();
     },
-    [data.meals, repo, refresh],
+    [data.meals, refresh],
   );
 
   const addSpin = useCallback(
     async (record: SpinRecord) => {
-      await repo.addSpin(record);
+      await repo().addSpin(record);
       await refresh();
     },
-    [repo, refresh],
+    [refresh],
   );
 
   const updateSpin = useCallback(
     async (id: string, patch: Partial<SpinRecord>) => {
-      await repo.updateSpin(id, patch);
+      await repo().updateSpin(id, patch);
       await refresh();
     },
-    [repo, refresh],
+    [refresh],
   );
 
   const clearHistory = useCallback(async () => {
-    await repo.clearHistory();
+    await repo().clearHistory();
     await refresh();
-  }, [repo, refresh]);
+  }, [refresh]);
 
-  const setFilters = useCallback(
-    async (next: Filters) => {
-      setData((prev) => ({ ...prev, filters: next }));
-      await repo.saveFilters(next);
-    },
-    [repo],
-  );
+  const setFilters = useCallback(async (next: Filters) => {
+    // Optimistic: filtering should feel instant even on a slow connection.
+    setData((prev) => ({ ...prev, filters: next }));
+    await repo().saveFilters(next);
+  }, []);
 
   const setSettings = useCallback(
     async (patch: Partial<Settings>) => {
       const next = { ...data.settings, ...patch };
       setData((prev) => ({ ...prev, settings: next }));
-      await repo.saveSettings(next);
+      await repo().saveSettings(next);
     },
-    [data.settings, repo],
+    [data.settings],
   );
 
   const importData = useCallback(
     async (incoming: Partial<AppData>) => {
-      if (incoming.meals?.length) await repo.putMeals(incoming.meals);
-      if (incoming.filters) await repo.saveFilters({ ...DEFAULT_FILTERS, ...incoming.filters });
-      if (incoming.settings) await repo.saveSettings({ ...DEFAULT_SETTINGS, ...incoming.settings });
+      const current = repo();
+      if (incoming.meals?.length) await current.putMeals(incoming.meals);
+      if (incoming.filters) await current.saveFilters({ ...DEFAULT_FILTERS, ...incoming.filters });
+      if (incoming.settings) await current.saveSettings({ ...DEFAULT_SETTINGS, ...incoming.settings });
       await refresh();
     },
-    [repo, refresh],
+    [refresh],
   );
 
   const resetAll = useCallback(async () => {
-    await repo.reset();
-    await repo.putMeals(seedMeals());
-    await repo.saveFilters({ ...DEFAULT_FILTERS });
-    await repo.saveSettings({ ...DEFAULT_SETTINGS });
+    const current = repo();
+    await current.reset();
+    await current.putMeals(seedMeals());
+    await current.saveFilters({ ...DEFAULT_FILTERS });
+    await current.saveSettings({ ...DEFAULT_SETTINGS });
     await refresh();
-  }, [repo, refresh]);
+  }, [refresh]);
 
   const value = useMemo<StoreValue>(
     () => ({
       ...data,
       ready,
+      backend,
+      backendError,
       createMeal,
       updateMeal,
       deleteMeal,
@@ -199,6 +240,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [
       data,
       ready,
+      backend,
+      backendError,
       createMeal,
       updateMeal,
       deleteMeal,

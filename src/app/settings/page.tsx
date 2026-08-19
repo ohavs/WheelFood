@@ -6,12 +6,26 @@ import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { SegmentedControl, Toggle } from "@/components/ui/Field";
 import { t } from "@/lib/strings";
-import { useStore } from "@/lib/store";
+import { useStore, type BackendStatus } from "@/lib/store";
 import { usePwaInstall } from "@/lib/usePwaInstall";
 import type { AppData, Settings } from "@/lib/types";
 
-const APP_VERSION = "0.1.0";
+const APP_VERSION = "0.2.0";
 const WHEEL_SIZES = [6, 8, 10, 12];
+
+const STORAGE_LABEL: Record<BackendStatus, string> = {
+  connecting: t.settings.storageConnecting,
+  cloud: t.settings.storageCloud,
+  local: t.settings.storageLocal,
+  fallback: t.settings.storageFallback,
+};
+
+const STORAGE_BODY: Record<BackendStatus, string> = {
+  connecting: "",
+  cloud: t.settings.storageCloudBody,
+  local: t.settings.storageLocalBody,
+  fallback: t.settings.storageFallbackBody,
+};
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -125,10 +139,27 @@ export default function SettingsPage() {
       </Section>
 
       <Section title={t.settings.data}>
-        <div className="flex flex-col gap-2 py-3">
-          <p className="text-sm text-ink-muted">
-            {t.settings.storage}: {t.settings.storageLocal}
-          </p>
+        <div className="flex flex-col gap-3 py-3">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span
+                className={`h-2 w-2 shrink-0 rounded-full ${
+                  store.backend === "cloud"
+                    ? "bg-mint"
+                    : store.backend === "connecting"
+                      ? "bg-accent"
+                      : store.backend === "fallback"
+                        ? "bg-danger"
+                        : "bg-ink-muted"
+                }`}
+              />
+              <span className="text-[0.95rem] font-medium text-ink">{STORAGE_LABEL[store.backend]}</span>
+            </div>
+            <p className="text-xs text-ink-muted">{STORAGE_BODY[store.backend]}</p>
+            {store.backendError ? (
+              <p className="mt-1 break-words font-mono text-[0.7rem] text-danger">{store.backendError}</p>
+            ) : null}
+          </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" size="sm" onClick={exportData}>
               {t.settings.exportData}

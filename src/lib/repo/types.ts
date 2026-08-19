@@ -11,6 +11,12 @@ import type { AppData, Filters, Meal, MealDraft, Settings, SpinRecord } from "@/
 export interface DataRepository {
   readonly name: string;
 
+  /**
+   * True when `subscribe` pushes every change back on its own. Callers then
+   * skip the re-read after a mutation and let the stream deliver it.
+   */
+  readonly realtime: boolean;
+
   /** Full snapshot used to hydrate the store on boot. */
   load(): Promise<AppData>;
 

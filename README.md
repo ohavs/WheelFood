@@ -1,8 +1,7 @@
 # WheelFood — Meal Roulette
 
 PWA שמחליטה בשבילך מה אוכלים: גלגל מנות עם סינון, היסטוריה, ומאגר מנות אישי.
-עובדת אופליין, ניתנת להתקנה למסך הבית, וכל שכבת הנתונים מופשטת כדי שחיבור
-Firebase יהיה שינוי של קובץ אחד.
+עובדת אופליין, ניתנת להתקנה למסך הבית, ומסנכרנת את הנתונים ל-Firestore.
 
 ## Stack
 
@@ -11,20 +10,25 @@ Firebase יהיה שינוי של קובץ אחד.
 | Framework | Next.js 16 (App Router, React 19, TypeScript) |
 | Styling | Tailwind CSS v4 + design tokens ב-`src/app/globals.css` |
 | State | React Context (`src/lib/store.tsx`) |
-| Storage | `LocalRepository` (localStorage) — Firebase נכנס במקומו |
+| Storage | Firestore (anonymous auth) עם נפילה חזרה ל-localStorage |
 | PWA | `src/app/manifest.ts` + `public/sw.js` (offline-first app shell) |
-| Deps נוספות | אין. הגלגל, הקונפטי, הצלילים והאייקונים נבנים מאפס |
+| Deps נוספות | `firebase` בלבד. הגלגל, הקונפטי, הצלילים והאייקונים נבנים מאפס |
 
 ## הרצה
 
 ```bash
 npm install
-npm run dev        # http://localhost:3000
-npm run build && npm run start
-npm run typecheck  # tsc --noEmit
+cp .env.example .env.local   # ומלא את ערכי Firebase
+npm run dev                  # http://localhost:3000
+npm run build                # פלט סטטי לתיקיית out/
+npm run start                # מגיש את out/ (השרת ה-dev לא נדרש)
+npm run typecheck
 npm run lint
-npm run icons      # מייצר מחדש את אייקוני ה-PWA
+npm run icons                # מייצר מחדש את אייקוני ה-PWA
 ```
+
+הבנייה היא `output: "export"` — כל המסלולים סטטיים, אין קוד שרת, והאפליקציה
+מתארחת על כל CDN.
 
 ## מבנה
 
@@ -46,7 +50,8 @@ src/
     ui/                 Button, Chip, Card, Sheet, Field, EmptyState
   lib/
     types.ts            מודל הנתונים
-    repo/               שכבת האחסון (interface + local + firebase stub)
+    repo/               שכבת האחסון (interface + local + firestore)
+    firebase/client.ts  אתחול ה-SDK והתחברות אנונימית
     selection.ts        סינון, הגרלה משוקללת, בחירת מנצח
     store.tsx           Context שמחבר בין ה-UI ל-repository
     strings.ts          כל הטקסטים במקום אחד
@@ -68,21 +73,39 @@ public/
 4. הגלגל מסתובב ל-`-(index * slice + slice/2)` פלוס כמה סיבובים שלמים, עם
    ג'יטר קטן בתוך המשבצת. הטיקים נקראים מה-transform האמיתי כל frame.
 
-## חיבור Firebase
+## Firebase
 
-כל הקריאות והכתיבות עוברות דרך `DataRepository` (`src/lib/repo/types.ts`).
-כדי לעבור ל-Firestore:
+הפרויקט מחובר ל-`foodwheel-3aebd`. הקונפיג נקרא ממשתני `NEXT_PUBLIC_FIREBASE_*`
+(ראה `.env.example`); בלעדיהם האפליקציה נופלת חזרה ל-localStorage בלי לשבור כלום.
 
-1. `npm i firebase`
-2. להעתיק `.env.example` ל-`.env.local` ולמלא את משתני `NEXT_PUBLIC_FIREBASE_*`
-   (מתוך Firebase Console → Project settings → Your apps → Web app).
-3. לממש `FirebaseRepository` ב-`src/lib/repo/firebase.ts` מול אותו interface —
-   `users/{uid}/meals`, `users/{uid}/history`, ומסמך `users/{uid}` לסינון
-   ולהגדרות. `subscribe()` מתחבר ל-`onSnapshot` ונותן סנכרון בזמן אמת.
-4. להחזיר אותו מ-`getRepository()` ב-`src/lib/repo/index.ts` כאשר
-   `isFirebaseConfigured()` מחזיר true.
+**מבנה הנתונים ב-Firestore**
 
-שום קומפוננטה לא משתנה — המסכים לא יודעים איפה הנתונים יושבים.
+```
+users/{uid}                -> (ריק, מחזיק את תתי-האוספים)
+users/{uid}/profile/main   -> { filters, settings }
+users/{uid}/meals/{id}     -> Meal
+users/{uid}/history/{id}   -> SpinRecord
+```
+
+כל מכשיר מתחבר ב-**anonymous auth**, וה-uid הוא הגבול היחיד בין משתמשים —
+`firestore.rules` מאפשר קריאה/כתיבה רק כשה-uid בטוקן שווה ל-uid בנתיב.
+המידע נקרא דרך `onSnapshot`, כך שכל שינוי מתעדכן בזמן אמת בכל הלשוניות
+והמכשירים, ו-`persistentLocalCache` נותן קריאה וכתיבה גם בלי רשת (הכתיבות
+מתנקזות כשהחיבור חוזר).
+
+**מה צריך להיות מופעל בקונסולה**
+
+| | |
+|---|---|
+| Firestore Database | ✅ קיים |
+| Authentication → Anonymous | ⚠️ צריך הפעלה — בלעדיו האפליקציה עובדת מקומית בלבד |
+
+**דיפלוי**
+
+```bash
+npx firebase-tools login
+npm run deploy      # build + deploy של hosting ושל firestore.rules
+```
 
 ## עיצוב
 

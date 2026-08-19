@@ -120,7 +120,15 @@ export const t = {
     resetData: "איפוס לברירת מחדל",
     resetConfirm: "לאפס את כל הנתונים?",
     storage: "אחסון",
-    storageLocal: "מקומי במכשיר (Firebase יחובר בהמשך)",
+    storageConnecting: "מתחבר…",
+    storageCloud: "מסונכרן עם Firebase",
+    storageCloudBody:
+      "המנות, ההיסטוריה וההגדרות נשמרות בענן ומתעדכנות בזמן אמת בכל המכשירים המחוברים לאותו חשבון.",
+    storageLocal: "מקומי במכשיר",
+    storageLocalBody: "הנתונים נשמרים בדפדפן הזה בלבד.",
+    storageFallback: "מקומי במכשיר (החיבור לענן נכשל)",
+    storageFallbackBody:
+      "לא הצלחנו להתחבר ל-Firebase, אז האפליקציה עובדת מקומית. הנתונים לא ילכו לאיבוד — הם יסונכרנו בפעם הבאה שהחיבור יעבוד.",
     install: "התקנת האפליקציה",
     installBody: "הוסף את WheelFood למסך הבית לחוויה מלאה.",
     installAction: "התקן",

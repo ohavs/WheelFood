@@ -35,6 +35,7 @@ function emptyData(): AppData {
  */
 export class LocalRepository implements DataRepository {
   readonly name = "local";
+  readonly realtime = false;
 
   private read(): AppData {
     if (typeof window === "undefined") return emptyData();

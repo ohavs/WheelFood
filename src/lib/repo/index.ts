@@ -1,24 +1,23 @@
+"use client";
+
+import { FirebaseRepository } from "@/lib/repo/firebase";
+import { isFirebaseConfigured } from "@/lib/repo/firebase-env";
 import { LocalRepository } from "@/lib/repo/local";
 import type { DataRepository } from "@/lib/repo/types";
 
 export type { DataRepository } from "@/lib/repo/types";
-
-let instance: DataRepository | null = null;
+export { isFirebaseConfigured } from "@/lib/repo/firebase-env";
 
 /**
- * Returns the active repository.
- *
- * When Firebase credentials land, add the branch here (see
- * src/lib/repo/firebase.ts) — nothing else in the app needs to change:
- *
- *   if (isFirebaseConfigured()) return (instance = new FirebaseRepository());
+ * Picks the backend for this session: Firestore when the project is
+ * configured, localStorage otherwise. `StoreProvider` falls back to local if
+ * the Firebase handshake fails (offline first load, anonymous auth disabled),
+ * so a bad connection degrades instead of blocking the app.
  */
-export function getRepository(): DataRepository {
-  if (!instance) instance = new LocalRepository();
-  return instance;
+export function createRepository(): DataRepository {
+  return isFirebaseConfigured() ? new FirebaseRepository() : new LocalRepository();
 }
 
-/** Test/debug hook for injecting a different backend. */
-export function setRepository(repo: DataRepository): void {
-  instance = repo;
+export function createLocalRepository(): DataRepository {
+  return new LocalRepository();
 }
