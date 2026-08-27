@@ -109,8 +109,11 @@ export function Wheel({ candidates, rotation, durationMs, spinning, onSpinEnd, o
         </svg>
       </div>
 
-      {/* Rim */}
-      <div className="absolute inset-0 rounded-full bg-[var(--wf-text)]/10 p-[3%] shadow-pop">
+      {/* Rim. `overflow-hidden` matters: the disc below is a square, and a
+          rotated square's corners stick out past the circle. Unclipped they
+          widen the document's scroll area, which lets the whole page pan
+          sideways and rubber-band while the wheel spins. */}
+      <div className="absolute inset-0 overflow-hidden rounded-full bg-[var(--wf-text)]/10 p-[3%] shadow-pop">
         <div
           ref={discRef}
           className="h-full w-full rounded-full will-change-transform"

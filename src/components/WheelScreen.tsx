@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Confetti, createConfetti, type ConfettiPiece } from "@/components/Confetti";
 import { FilterSheet } from "@/components/FilterSheet";
+import { ModeTabs } from "@/components/ModeTabs";
 import { ResultSheet } from "@/components/ResultSheet";
 import { Wheel } from "@/components/Wheel";
 import { Button } from "@/components/ui/Button";
@@ -14,7 +15,7 @@ import { seededRandom } from "@/lib/random";
 import { collectTags, countActiveFilters, drawCandidates, filterMeals, pickWinner } from "@/lib/selection";
 import { t } from "@/lib/strings";
 import { useStore } from "@/lib/store";
-import type { Meal } from "@/lib/types";
+import { MODE_KINDS, modeOf, type Meal, type Mode } from "@/lib/types";
 
 const SPIN_MS = 4200;
 const MIN_TURNS = 4;
@@ -23,7 +24,7 @@ export function WheelScreen() {
   const store = useStore();
   const { meals, history, filters, settings, ready } = store;
 
-  const [rotation, setRotation] = useState(0);
+  const [rotations, setRotations] = useState<Record<Mode, number>>({ home: 0, out: 0 });
   const [spinning, setSpinning] = useState(false);
   const [winner, setWinner] = useState<Meal | null>(null);
   const [confetti, setConfetti] = useState<ConfettiPiece[] | null>(null);
@@ -34,17 +35,37 @@ export function WheelScreen() {
   const pendingWinner = useRef<Meal | null>(null);
   const currentSpinId = useRef<string | null>(null);
 
+  const mode = filters.mode;
+  const rotation = rotations[mode];
+
   const pool = useMemo(() => filterMeals(meals, filters, history), [meals, filters, history]);
-  const tags = useMemo(() => collectTags(meals), [meals]);
+  // Tags and counts follow the active side, so the filter sheet never offers a
+  // tag that only exists on the other wheel.
+  const modeMeals = useMemo(
+    () => meals.filter((meal) => MODE_KINDS[mode].includes(meal.kind)),
+    [meals, mode],
+  );
+  const tags = useMemo(() => collectTags(modeMeals), [modeMeals]);
+  const counts = useMemo(
+    () =>
+      meals.reduce(
+        (acc, meal) => {
+          acc[modeOf(meal.kind)] += 1;
+          return acc;
+        },
+        { home: 0, out: 0 } as Record<Mode, number>,
+      ),
+    [meals],
+  );
   const activeFilterCount = countActiveFilters(filters);
 
   // The visible slices are a deterministic draw from the eligible pool: same
   // pool + same nonce always yields the same wheel, so render stays pure and
   // the server and client agree. The shuffle button re-seeds it.
   const candidates = useMemo(() => {
-    const seed = `${shuffleNonce}:${settings.wheelSize}:${pool.map((meal) => meal.id).join(",")}`;
+    const seed = `${mode}:${shuffleNonce}:${settings.wheelSize}:${pool.map((meal) => meal.id).join(",")}`;
     return drawCandidates(pool, settings.wheelSize, seededRandom(seed));
-  }, [pool, settings.wheelSize, shuffleNonce]);
+  }, [pool, settings.wheelSize, shuffleNonce, mode]);
 
   const reshuffle = useCallback(() => {
     if (spinning) return;
@@ -67,9 +88,9 @@ export function WheelScreen() {
     pendingWinner.current = candidates[index];
     currentSpinId.current = uid("spin");
     setSpinning(true);
-    setRotation(rotation + turns * 360 + delta);
+    setRotations((prev) => ({ ...prev, [mode]: rotation + turns * 360 + delta }));
     vibrate(settings.haptics, 12);
-  }, [candidates, rotation, spinning, settings.haptics]);
+  }, [candidates, rotation, spinning, settings.haptics, mode]);
 
   const onTick = useCallback(
     (progress: number) => {
@@ -174,8 +195,25 @@ export function WheelScreen() {
         </div>
       </header>
 
+      <ModeTabs
+        value={mode}
+        counts={counts}
+        onChange={(next) => void store.setFilters({ ...filters, mode: next })}
+      />
+
       <div className="flex w-full flex-1 flex-col items-center justify-center gap-6">
-        {pool.length === 0 ? (
+        {modeMeals.length === 0 ? (
+          <EmptyState
+            emoji={mode === "home" ? "🍳" : "🛵"}
+            title={mode === "home" ? t.wheel.emptyHome : t.wheel.emptyOut}
+            body={mode === "home" ? t.wheel.emptyHomeBody : t.wheel.emptyOutBody}
+            action={
+              <Link href="/meals">
+                <Button>{t.wheel.emptyAction}</Button>
+              </Link>
+            }
+          />
+        ) : pool.length === 0 ? (
           <EmptyState
             emoji="🫙"
             title={t.wheel.emptyTitle}

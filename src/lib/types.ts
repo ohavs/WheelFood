@@ -12,6 +12,22 @@ export type Category = (typeof CATEGORIES)[number];
 export const KINDS = ["home", "takeout", "restaurant"] as const;
 export type Kind = (typeof KINDS)[number];
 
+/**
+ * The app is split in two all the way through: cooking at home is a different
+ * decision from eating out, with its own list and its own wheel.
+ */
+export const MODES = ["home", "out"] as const;
+export type Mode = (typeof MODES)[number];
+
+export const MODE_KINDS: Record<Mode, Kind[]> = {
+  home: ["home"],
+  out: ["takeout", "restaurant"],
+};
+
+export function modeOf(kind: Kind): Mode {
+  return kind === "home" ? "home" : "out";
+}
+
 /** 1 = cheap, 2 = mid, 3 = splurge. */
 export type Cost = 1 | 2 | 3;
 
@@ -50,6 +66,8 @@ export interface SpinRecord {
 }
 
 export interface Filters {
+  /** Which of the two wheels is showing. */
+  mode: Mode;
   categories: Category[];
   kinds: Kind[];
   tags: string[];
@@ -77,6 +95,7 @@ export interface AppData {
 }
 
 export const DEFAULT_FILTERS: Filters = {
+  mode: "home",
   categories: [],
   kinds: [],
   tags: [],

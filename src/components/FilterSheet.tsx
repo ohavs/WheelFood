@@ -9,7 +9,7 @@ import { CATEGORY_EMOJI, CATEGORY_LABELS, COST_LABELS, KIND_EMOJI, KIND_LABELS, 
 import {
   CATEGORIES,
   DEFAULT_FILTERS,
-  KINDS,
+  MODE_KINDS,
   type Category,
   type Cost,
   type Filters,
@@ -62,21 +62,25 @@ export function FilterSheet({ onClose, filters, availableTags, onApply }: Props)
           </div>
         </section>
 
-        <section>
-          <Label>{t.filters.kinds}</Label>
-          <div className="flex flex-wrap gap-2">
-            {KINDS.map((kind) => (
-              <Chip
-                key={kind}
-                selected={draft.kinds.includes(kind)}
-                onClick={() => patch({ kinds: toggleIn<Kind>(draft.kinds, kind) })}
-              >
-                <span>{KIND_EMOJI[kind]}</span>
-                {KIND_LABELS[kind]}
-              </Chip>
-            ))}
-          </div>
-        </section>
+        {/* Home has a single kind, so the chips would be a no-op there — the
+            mode tabs already made that choice. */}
+        {MODE_KINDS[draft.mode].length > 1 ? (
+          <section>
+            <Label>{t.filters.kinds}</Label>
+            <div className="flex flex-wrap gap-2">
+              {MODE_KINDS[draft.mode].map((kind) => (
+                <Chip
+                  key={kind}
+                  selected={draft.kinds.includes(kind)}
+                  onClick={() => patch({ kinds: toggleIn<Kind>(draft.kinds, kind) })}
+                >
+                  <span>{KIND_EMOJI[kind]}</span>
+                  {KIND_LABELS[kind]}
+                </Chip>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {availableTags.length > 0 ? (
           <section>
@@ -149,7 +153,7 @@ export function FilterSheet({ onClose, filters, availableTags, onApply }: Props)
         </section>
 
         <div className="sticky bottom-0 -mx-1 flex gap-3 bg-bg-elevated pb-1 pt-3">
-          <Button variant="secondary" onClick={() => setDraft({ ...DEFAULT_FILTERS })}>
+          <Button variant="secondary" onClick={() => setDraft({ ...DEFAULT_FILTERS, mode: draft.mode })}>
             {t.filters.clear}
           </Button>
           <Button

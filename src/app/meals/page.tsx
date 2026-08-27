@@ -3,30 +3,45 @@
 import { useMemo, useState } from "react";
 import { MealCard } from "@/components/MealCard";
 import { MealForm } from "@/components/MealForm";
+import { ModeTabs } from "@/components/ModeTabs";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TextInput } from "@/components/ui/Field";
 import { t } from "@/lib/strings";
 import { useStore } from "@/lib/store";
-import type { Meal } from "@/lib/types";
+import { MODE_KINDS, modeOf, type Meal, type Mode } from "@/lib/types";
 
 export default function MealsPage() {
   const store = useStore();
+  const [mode, setMode] = useState<Mode>("home");
   const [query, setQuery] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Meal | null>(null);
 
+  const counts = useMemo(
+    () =>
+      store.meals.reduce(
+        (acc, meal) => {
+          acc[modeOf(meal.kind)] += 1;
+          return acc;
+        },
+        { home: 0, out: 0 } as Record<Mode, number>,
+      ),
+    [store.meals],
+  );
+
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const list = needle
-      ? store.meals.filter(
-          (meal) =>
-            meal.name.toLowerCase().includes(needle) ||
-            meal.tags.some((tag) => tag.toLowerCase().includes(needle)),
-        )
-      : store.meals;
-    return [...list].sort((a, b) => Number(b.favorite) - Number(a.favorite) || b.updatedAt - a.updatedAt);
-  }, [store.meals, query]);
+    const list = store.meals.filter((meal) => {
+      if (!MODE_KINDS[mode].includes(meal.kind)) return false;
+      if (!needle) return true;
+      return (
+        meal.name.toLowerCase().includes(needle) ||
+        meal.tags.some((tag) => tag.toLowerCase().includes(needle))
+      );
+    });
+    return list.sort((a, b) => Number(b.favorite) - Number(a.favorite) || b.updatedAt - a.updatedAt);
+  }, [store.meals, query, mode]);
 
   const openNew = () => {
     setEditing(null);
@@ -45,10 +60,12 @@ export default function MealsPage() {
           <h1 className="text-2xl font-extrabold">{t.meals.title}</h1>
           <p className="text-sm text-ink-muted">{t.meals.count(store.meals.length)}</p>
         </div>
-        <Button onClick={openNew}>+ {t.meals.add}</Button>
+        <Button onClick={openNew}>+ {mode === "home" ? t.meals.addHome : t.meals.addOut}</Button>
       </header>
 
-      {store.meals.length > 0 ? (
+      <ModeTabs value={mode} counts={counts} onChange={setMode} />
+
+      {counts[mode] > 0 ? (
         <TextInput
           type="search"
           value={query}
@@ -59,10 +76,10 @@ export default function MealsPage() {
 
       {visible.length === 0 ? (
         <EmptyState
-          emoji="📝"
-          title={t.meals.empty}
-          body={t.meals.emptyBody}
-          action={<Button onClick={openNew}>{t.meals.add}</Button>}
+          emoji={mode === "home" ? "🍳" : "🛵"}
+          title={mode === "home" ? t.wheel.emptyHome : t.wheel.emptyOut}
+          body={mode === "home" ? t.wheel.emptyHomeBody : t.wheel.emptyOutBody}
+          action={<Button onClick={openNew}>{mode === "home" ? t.meals.addHome : t.meals.addOut}</Button>}
         />
       ) : (
         <ul className="flex flex-col gap-2.5">
@@ -85,6 +102,7 @@ export default function MealsPage() {
       {formOpen ? (
         <MealForm
           meal={editing}
+          mode={mode}
           onClose={() => setFormOpen(false)}
           onSubmit={async (draft) => {
             if (editing) await store.updateMeal(editing.id, draft);

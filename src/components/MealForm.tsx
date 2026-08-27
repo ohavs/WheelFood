@@ -8,11 +8,13 @@ import { Sheet } from "@/components/ui/Sheet";
 import { CATEGORY_EMOJI, CATEGORY_LABELS, COST_LABELS, KIND_EMOJI, KIND_LABELS, t } from "@/lib/strings";
 import {
   CATEGORIES,
-  KINDS,
+  MODE_KINDS,
+  modeOf,
   type Category,
   type Cost,
   type Meal,
   type MealDraft,
+  type Mode,
   type Weight,
 } from "@/lib/types";
 
@@ -57,12 +59,12 @@ const WEIGHT_LABELS: Record<Weight, string> = {
   5: "מת על זה",
 };
 
-function emptyDraft(): MealDraft {
+function emptyDraft(mode: Mode): MealDraft {
   return {
     name: "",
-    emoji: "🍽️",
+    emoji: mode === "home" ? "🍽️" : "🥡",
     categories: ["dinner"],
-    kind: "home",
+    kind: MODE_KINDS[mode][0],
     tags: [],
     prepMinutes: 20,
     cost: 1,
@@ -91,13 +93,15 @@ function toDraft(meal: Meal): MealDraft {
 
 interface Props {
   meal: Meal | null;
+  /** Which list the form was opened from; seeds the kind for a new meal. */
+  mode: Mode;
   onClose: () => void;
   onSubmit: (draft: MealDraft) => Promise<void> | void;
 }
 
 /** Mounted only while open, so the draft is seeded once from `meal`. */
-export function MealForm({ meal, onClose, onSubmit }: Props) {
-  const [draft, setDraft] = useState<MealDraft>(() => (meal ? toDraft(meal) : emptyDraft()));
+export function MealForm({ meal, mode, onClose, onSubmit }: Props) {
+  const [draft, setDraft] = useState<MealDraft>(() => (meal ? toDraft(meal) : emptyDraft(mode)));
   const [tagInput, setTagInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -138,7 +142,7 @@ export function MealForm({ meal, onClose, onSubmit }: Props) {
     <Sheet open onClose={onClose} title={meal ? t.meals.edit : t.meals.add} tall>
       <form onSubmit={submit} className="flex flex-col gap-6 pt-2">
         <section>
-          <Label>{t.form.name}</Label>
+          <Label>{modeOf(draft.kind) === "home" ? t.form.name : t.form.placeName}</Label>
           <TextInput
             value={draft.name}
             onChange={(event) => {
@@ -192,17 +196,19 @@ export function MealForm({ meal, onClose, onSubmit }: Props) {
           </div>
         </section>
 
-        <section>
-          <Label>{t.form.kind}</Label>
-          <div className="flex flex-wrap gap-2">
-            {KINDS.map((kind) => (
-              <Chip key={kind} selected={draft.kind === kind} onClick={() => patch({ kind })}>
-                <span>{KIND_EMOJI[kind]}</span>
-                {KIND_LABELS[kind]}
-              </Chip>
-            ))}
-          </div>
-        </section>
+        {MODE_KINDS[modeOf(draft.kind)].length > 1 ? (
+          <section>
+            <Label>{t.form.kind}</Label>
+            <div className="flex flex-wrap gap-2">
+              {MODE_KINDS[modeOf(draft.kind)].map((kind) => (
+                <Chip key={kind} selected={draft.kind === kind} onClick={() => patch({ kind })}>
+                  <span>{KIND_EMOJI[kind]}</span>
+                  {KIND_LABELS[kind]}
+                </Chip>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section>
           <Label>{t.form.tags}</Label>

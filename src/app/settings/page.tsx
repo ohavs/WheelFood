@@ -10,7 +10,7 @@ import { useStore, type BackendStatus } from "@/lib/store";
 import { usePwaInstall } from "@/lib/usePwaInstall";
 import type { AppData, Settings } from "@/lib/types";
 
-const APP_VERSION = "0.2.0";
+const APP_VERSION = "0.3.0";
 const WHEEL_SIZES = [6, 8, 10, 12];
 
 const STORAGE_LABEL: Record<BackendStatus, string> = {

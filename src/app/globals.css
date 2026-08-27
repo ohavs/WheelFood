@@ -136,6 +136,10 @@ html {
 body {
   background: var(--wf-bg);
   color: var(--wf-text);
+  /* Nothing in this app scrolls sideways; `clip` refuses the axis outright
+     rather than just hiding it, so a stray transform cannot make the page
+     pannable. */
+  overflow-x: clip;
   font-family:
     var(--font-app),
     system-ui,

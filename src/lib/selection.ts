@@ -1,4 +1,4 @@
-import type { Filters, Meal, SpinRecord } from "@/lib/types";
+import { MODE_KINDS, type Filters, type Meal, type SpinRecord } from "@/lib/types";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -9,8 +9,11 @@ export function filterMeals(meals: Meal[], filters: Filters, history: SpinRecord
     recentCutoff ? history.filter((h) => h.at >= recentCutoff).map((h) => h.mealId) : [],
   );
 
+  const modeKinds = MODE_KINDS[filters.mode];
+
   return meals.filter((meal) => {
     if (!meal.enabled) return false;
+    if (!modeKinds.includes(meal.kind)) return false;
     if (filters.favoritesOnly && !meal.favorite) return false;
     if (filters.categories.length && !meal.categories.some((c) => filters.categories.includes(c)))
       return false;

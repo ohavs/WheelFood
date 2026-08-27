@@ -1,4 +1,4 @@
-import type { Category, Kind } from "@/lib/types";
+import type { Category, Kind, Mode } from "@/lib/types";
 
 /**
  * All user-facing copy lives here so the UI can be re-languaged (or flipped
@@ -15,6 +15,13 @@ export const t = {
     settings: "הגדרות",
   },
 
+  mode: {
+    home: "מבשלים בבית",
+    out: "אוכלים בחוץ",
+    homeShort: "בבית",
+    outShort: "בחוץ",
+  },
+
   wheel: {
     spin: "סובב!",
     spinning: "מסתובב…",
@@ -25,6 +32,10 @@ export const t = {
     emptyAction: "להוסיף מנה",
     noMealsTitle: "המאגר ריק",
     noMealsBody: "הוסף כמה מנות שאתה אוהב ונתחיל לסובב.",
+    emptyHome: "אין עדיין מנות ביתיות",
+    emptyHomeBody: "הוסף מנות שאתה מבשל בבית והגלגל הזה יתמלא.",
+    emptyOut: "אין עדיין טייק אווי ומסעדות",
+    emptyOutBody: "הוסף מקומות שאתה מזמין מהם או יוצא אליהם.",
   },
 
   result: {
@@ -55,6 +66,8 @@ export const t = {
 
   meals: {
     title: "המנות שלי",
+    addHome: "מנה ביתית",
+    addOut: "מקום חדש",
     add: "מנה חדשה",
     edit: "עריכת מנה",
     search: "חיפוש מנה…",
@@ -70,6 +83,7 @@ export const t = {
 
   form: {
     name: "שם המנה",
+    placeName: "שם המקום או המנה",
     namePlaceholder: "לדוגמה: פסטה ברוטב עגבניות",
     emoji: "אימוג׳י",
     categories: "מתאים ל…",
@@ -160,6 +174,21 @@ export const CATEGORY_EMOJI: Record<Category, string> = {
   dinner: "🌙",
   snack: "🍿",
   dessert: "🍰",
+};
+
+export const MODE_LABELS: Record<Mode, string> = {
+  home: t.mode.home,
+  out: t.mode.out,
+};
+
+export const MODE_SHORT_LABELS: Record<Mode, string> = {
+  home: t.mode.homeShort,
+  out: t.mode.outShort,
+};
+
+export const MODE_EMOJI: Record<Mode, string> = {
+  home: "🏠",
+  out: "🛵",
 };
 
 export const KIND_LABELS: Record<Kind, string> = {
